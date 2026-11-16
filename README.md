@@ -52,6 +52,8 @@ Open the project in Claude Code once and **accept the trust prompt**: hooks insi
 
 Update the plugin (`/plugin marketplace update superagent`), then run `/superagent:setup` again in the project. Files are replaced with the new version; the project-specific text between `<!-- PROJECT:<id> -->` markers is carried over, and any file you changed outside those markers is shown to you with a diff before anything happens to it.
 
+A project may pin the marketplace to a reviewed commit, so plugin updates reach it only when someone moves the pin: set `"ref"` to the commit's full SHA in `extraKnownMarketplaces.superagent.source` of `.claude/settings.json` (needs Claude Code 2.1.324 or later). The setup keeps that ref on every re-run; to upgrade, move it to the new commit first.
+
 ## Uninstall
 
 Delete from the project: `.claude/agents/{router,worker,teammate,tester,reviewer,merger,checker,reproducer,watchdog}.md`, `.claude/hooks/`, `.claude/watchdog/`, `.claude/skills/write-tickets/`, `.claude/README.md`, `.claude/superagent.json`, and from `.claude/settings.json` the `superagent` marketplace, the two `@superagent` plugin entries and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (unless you use agent teams otherwise). The `.claude/worktrees/` and `.job/` lines in `.gitignore` can stay. Then `/plugin uninstall superagent@superagent` and `/plugin uninstall superagent-board@superagent`.
