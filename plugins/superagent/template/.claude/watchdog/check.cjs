@@ -39,7 +39,9 @@ function loadRules() {
   return {
     interval_minutes: 10, quiet_minutes: 15, long_minutes: 60, rereport_minutes: 30,
     no_status_minutes: 10, lock_stale_minutes: 20, health_command: null, ignore: [],
-    ...tryJson(path.join(HERE, 'rules.json'), {}),
+    // A missing rules.json means the defaults; an unreadable or invalid one fails the round (watchdog-error),
+    // never silently drops the configured thresholds, ignores and health check.
+    ...(fs.existsSync(path.join(HERE, 'rules.json')) ? readJson(path.join(HERE, 'rules.json')) : {}),
   };
 }
 
@@ -100,8 +102,8 @@ const touches = (file, pattern, ticketDir) => !(ticketDir && file.startsWith(tic
  * worktrees (a person's, another tool's) are never touched.
  */
 function agentWorktrees() {
-  let out = '';
-  try { out = gitRaw(ROOT, 'worktree', 'list', '--porcelain'); } catch { return []; }
+  // No try: if git can't list the worktrees, the round fails (watchdog-error) instead of reading as healthy.
+  const out = gitRaw(ROOT, 'worktree', 'list', '--porcelain');
   return out.split('\n').filter(l => l.startsWith('worktree ')).map(l => l.slice(9))
     .filter(p => /^agent-/.test(path.basename(p)) && path.resolve(p) !== path.resolve(ROOT));
 }
@@ -208,7 +210,9 @@ function round(rules) {
     if (!s) {
       const who = j.identity || { type: 'agent', ticket: null, label: j.name };
       if (j.worktree && j.createdMin > rules.no_status_minutes && !NO_STATUS_TYPES.has(who.type)) {
-        add('no-status', who.label, who.ticket, `its worktree ${j.name} has no .job/status.json after ${Math.round(j.createdMin)} min`);
+        // The detail stays the same from round to round (no age in it), so rereport_minutes governs repeats;
+        // since_minutes carries the age.
+        add('no-status', who.label, who.ticket, `its worktree ${j.name} has no .job/status.json after more than ${rules.no_status_minutes} min`);
       }
       continue;
     }

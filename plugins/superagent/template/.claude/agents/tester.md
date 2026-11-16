@@ -27,7 +27,7 @@ The worker gives you the ticket folder, the directory to run in (its worktree), 
 
 # Your report
 
-Before replying, save the full report below to `<ticket folder>/evidence/tester-report.md` (with Bash, e.g. a heredoc). The worker cites it and must not edit it, so it's the independent record of what you saw.
+Before replying, save the full report below to `<ticket folder>/evidence/tester-report.md`, or to `evidence/tester-report-<prefix>.md` when the prompt gives a name prefix, so testers running side by side never overwrite each other's report (with Bash, e.g. a heredoc). The worker cites it and must not edit it, so it's the independent record of what you saw.
 
 One line per check, in eval.md order, and nothing else above it:
 

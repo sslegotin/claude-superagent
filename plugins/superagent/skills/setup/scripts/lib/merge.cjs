@@ -20,9 +20,13 @@ function mergeSettings(settings) {
     changes.push('env: turn on agent teams (CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1)')
   }
   s.extraKnownMarketplaces ??= {}
-  if (!same(s.extraKnownMarketplaces[MARKETPLACE], MARKETPLACE_SOURCE)) {
-    s.extraKnownMarketplaces[MARKETPLACE] = MARKETPLACE_SOURCE
-    changes.push(`extraKnownMarketplaces: add "${MARKETPLACE}" (github sslegotin/claude-superagent)`)
+  // A ref the project pinned (a branch, a tag or a reviewed commit's SHA) is the project's choice and stays;
+  // moving it is an upgrade the project makes on purpose, not something a setup re-run does.
+  const ref = s.extraKnownMarketplaces[MARKETPLACE]?.source?.ref
+  const wanted = typeof ref === 'string' && ref ? { source: { ...MARKETPLACE_SOURCE.source, ref } } : MARKETPLACE_SOURCE
+  if (!same(s.extraKnownMarketplaces[MARKETPLACE], wanted)) {
+    s.extraKnownMarketplaces[MARKETPLACE] = wanted
+    changes.push(`extraKnownMarketplaces: add "${MARKETPLACE}" (github sslegotin/claude-superagent${wanted === MARKETPLACE_SOURCE ? '' : ` at ${ref}`})`)
   }
   if (LEGACY_MARKETPLACE in s.extraKnownMarketplaces) {
     delete s.extraKnownMarketplaces[LEGACY_MARKETPLACE]

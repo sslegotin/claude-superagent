@@ -39,7 +39,9 @@ function readOnlyGitBranch(cmd) {
   }
   return true;
 }
-const SHELL_OPERATORS = /[;&|<>`$\\\n\r]|\(|\)/; // no chaining, redirection, substitution or escapes
+// No chaining, redirection, substitution, escapes or quotes. Quotes are refused because the flag check below reads
+// the raw string: `git diff '--output=x'` would hide --output from it, and the shell drops the quotes before git runs.
+const SHELL_OPERATORS = /[;&|<>`$\\\n\r'"]|\(|\)/;
 const RISKY_FLAGS = /(^| )--(output|ext-diff|exec|upload-pack|textconv)\b|(^| )-o\b/;
 
 function deny(reason) {
@@ -59,7 +61,7 @@ process.stdin.on('data', d => (raw += d)).on('end', () => {
     const cmd = String(input.tool_input?.command ?? '').trim();
     const ok = !SHELL_OPERATORS.test(cmd) && !RISKY_FLAGS.test(cmd) && (READ_ONLY_BASH.some(re => re.test(cmd)) || readOnlyGitBranch(cmd));
     if (ok) return;
-    return deny(`The router only runs read-only commands (git status/log/diff/show/branch/worktree list, gh pr view/list/status/checks, ls, pwd, node .claude/watchdog/check.cjs, node .claude/hooks/verify-results.cjs <ticket> [--rev <rev>]), one at a time without shell operators. Blocked: ${cmd.slice(0, 200)}. Hand any real work to the right agent.`);
+    return deny(`The router only runs read-only commands (git status/log/diff/show/branch/worktree list, gh pr view/list/status/checks, ls, pwd, node .claude/watchdog/check.cjs, node .claude/hooks/verify-results.cjs <ticket> [--rev <rev>]), one at a time, without shell operators or quotes. Blocked: ${cmd.slice(0, 200)}. Hand any real work to the right agent.`);
   }
   return deny(`The router never builds or edits anything itself (${tool} blocked). Hand this to a worker, teammate, merger or reproducer.`);
 });
