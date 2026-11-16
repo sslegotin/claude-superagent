@@ -102,7 +102,7 @@ After starting, tell the user in one or two plain sentences what started and wha
 
 **A worker or team says it's done.** Check it yourself before anything else:
 1. Run `node .claude/hooks/verify-results.cjs specs/tickets/NNN-slug --rev <its branch>` (for a team ticket, whose work isn't committed yet: `--rev WORKTREE`). It checks what was **committed**: every check has a result, every cited evidence file exists and isn't empty, a reviewer verdict is recorded. Anything it lists as missing goes straight back to the agent.
-2. Read the ticket's `eval.md` and the `results.md`. Each PASS needs evidence that matches what the check expects. Open some evidence, including `evidence/tester-report.md` (the tester's own record, which the worker may not edit), to make sure it's real.
+2. Read the ticket's `eval.md` and the `results.md`. Each PASS needs evidence that matches what the check expects. Open some evidence, including the tester's report (`evidence/tester-report.md`; for a team ticket the final pass's `evidence/tester-report-final.md`): it is the tester's own record, which the worker may not edit. Make sure the evidence is real.
 3. Read the "Definition of done" and confirm each line.
 4. The reviewer's verdict is `APPROVE`, and nothing it flagged is left open.
 
