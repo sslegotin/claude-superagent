@@ -7,7 +7,8 @@
 //
 // Prints, per ticket: started, merged, minutes from start to merge, and how many times it was sent back
 // (SendMessage to its agent). Then the run's wall time, the summed build time, and the most tickets that
-// were being built at the same moment (the real parallel width).
+// were being built at the same moment (the real parallel width). With --batch, only that batch's tickets: those
+// specs/tickets/BOARD.md puts in it, and those the merger recorded as merged in it.
 
 const fs = require('fs');
 const path = require('path');
@@ -43,7 +44,20 @@ for (const m of metrics) {
   if (!t.merged || m.at > t.merged) t.merged = m.at;
 }
 
-const rows = [...tickets.entries()].filter(([, t]) => t.start || t.merged).sort(([a], [b]) => a.localeCompare(b));
+// The batch's tickets: the BOARD.md rows whose last cell (Batch) names it, plus any merged in it.
+const inBatch = (() => {
+  if (!batchArg) return null;
+  const set = new Set(metrics.filter(m => m.event === 'merged' && m.ticket && m.batch === batchArg).map(m => String(m.ticket)));
+  let board = '';
+  try { board = fs.readFileSync(path.join(root, 'specs', 'tickets', 'BOARD.md'), 'utf8'); } catch {}
+  for (const line of board.split('\n')) {
+    const cells = line.split('|').map(c => c.trim());
+    if (/^\d{3}$/.test(cells[1] || '') && cells[cells.length - 2] === batchArg) set.add(cells[1]);
+  }
+  return set;
+})();
+
+const rows = [...tickets.entries()].filter(([n, t]) => (t.start || t.merged) && (!inBatch || inBatch.has(n))).sort(([a], [b]) => a.localeCompare(b));
 const min = (a, b) => (Date.parse(b) - Date.parse(a)) / 60000;
 const hhmm = iso => (iso ? new Date(iso).toISOString().slice(11, 16) : '  -  ');
 console.log('ticket  started  merged  minutes  sent back');

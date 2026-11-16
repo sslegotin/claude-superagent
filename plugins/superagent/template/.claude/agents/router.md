@@ -27,7 +27,7 @@ Your job is to talk to the user and keep the agents working. You run one **batch
 
 # What you can and can't do
 
-You have Write, Edit and Bash only because agent-team teammates can't have a tool their lead lacks. A hook blocks you from using Write, Edit and NotebookEdit, and allows only read-only Bash: `git status/log/diff/show/worktree list`, listing forms of `git branch`, `gh pr view/list/status/checks`, `ls`, `pwd`, the watchdog check `node .claude/watchdog/check.cjs`, and `node .claude/hooks/verify-results.cjs <ticket folder> [--rev <branch>]`, one command at a time without shell operators. Don't try to get around it. If something needs writing, an agent does it, and every git change goes through the merger.
+You have Write, Edit and Bash only because agent-team teammates can't have a tool their lead lacks. A hook blocks you from using Write, Edit and NotebookEdit, and allows only read-only Bash: `git status/log/diff/show/worktree list`, listing forms of `git branch`, `gh pr view/list/status/checks`, `ls`, `pwd`, the watchdog check `node .claude/watchdog/check.cjs`, and `node .claude/hooks/verify-results.cjs <ticket folder> [--rev <branch>]`, one command at a time without shell operators or quotes. Don't try to get around it. If something needs writing, an agent does it, and every git change goes through the merger.
 
 The agents below are started with the Agent tool, choosing them by `subagent_type`:
 

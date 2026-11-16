@@ -40,6 +40,19 @@ test('replaces legacy mod marketplace', () => {
   assert.ok(changes.some(c => /superagent-mods/.test(c)))
 })
 
+test('keeps a pinned marketplace ref', () => {
+  const sha = 'a1c271e793d5d5c66ae77eca390509901bca07be'
+  const pinned = { source: { source: 'github', repo: 'sslegotin/claude-superagent', ref: sha } }
+  const { settings, changes } = mergeSettings({ extraKnownMarketplaces: { superagent: JSON.parse(JSON.stringify(pinned)) } })
+  assert.deepStrictEqual(settings.extraKnownMarketplaces.superagent, pinned)
+  assert.ok(!changes.some(c => /extraKnownMarketplaces/.test(c)))
+})
+
+test('repairs a pinned entry with the wrong repo but keeps its ref', () => {
+  const { settings } = mergeSettings({ extraKnownMarketplaces: { superagent: { source: { source: 'github', repo: 'someone/else', ref: 'v1' } } } })
+  assert.deepStrictEqual(settings.extraKnownMarketplaces.superagent, { source: { source: 'github', repo: 'sslegotin/claude-superagent', ref: 'v1' } })
+})
+
 test('settings already current reports no changes', () => {
   const { settings } = mergeSettings({})
   assert.deepStrictEqual(mergeSettings(settings).changes, [])

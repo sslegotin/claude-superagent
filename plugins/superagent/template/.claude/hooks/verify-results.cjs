@@ -13,8 +13,8 @@
 //   - eval.md and results.md exist in that revision
 //   - every check E-n named in eval.md has a result line: E-n | PASS | FAIL | NOT RUN | …
 //   - every evidence file a result cites (evidence/…) exists in that revision and is not empty
-//   - a reviewer verdict is recorded (APPROVE or CHANGES NEEDED, or a "Reviewer" section the user waived:
-//     "not run, user chose to merge")
+//   - a "## Reviewer" section records the verdict (APPROVE or CHANGES NEEDED, or the user's waiver:
+//     "not run, user chose to merge"); verdict words outside that section don't count
 // Outcome (reported, never a reason to fail here: the router decides):
 //   - which checks FAILED, which were NOT RUN, and which NOT RUN ones carry the user's waiver
 //     ("not run, user chose to merge")
@@ -90,11 +90,13 @@ function verify({ ticketDir, rev = 'HEAD', cwd = process.cwd() }) {
     }
   }
 
-  const verdict = resultsText.match(/\b(APPROVE|CHANGES NEEDED)\b/);
+  // The verdict is read from the "## Reviewer" section only: a verdict word elsewhere (a result line that quotes
+  // "APPROVE", a decision) is not a review. The section's first verdict word is the final verdict.
   const reviewSection = resultsText.match(/^#+\s*Reviewer[^\n]*\n([\s\S]*?)(?=^#|(?![\s\S]))/im);
+  const verdict = reviewSection && reviewSection[1].match(/\b(APPROVE|CHANGES NEEDED)\b/);
   if (verdict) report.verdict = verdict[1];
   else if (reviewSection && /user chose to merge/i.test(reviewSection[1])) report.verdict = 'WAIVED BY USER';
-  else miss('a reviewer verdict (APPROVE or CHANGES NEEDED) in results.md');
+  else miss('a reviewer verdict (APPROVE or CHANGES NEEDED) in the "## Reviewer" section of results.md');
   return report;
 }
 
