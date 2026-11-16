@@ -25,7 +25,7 @@ Ask the user with AskUserQuestion, **one question at a time**, with your recomme
 ## 1. Preflight
 
 - The project root is `git rev-parse --show-toplevel`. If this isn't a git repository, offer to run `git init -b main` and make a first commit; each batch is built on a branch made from `main`, so at least one commit must exist.
-- If that root is an agent's worktree (a path under `.claude/worktrees/`), stop: setup runs in the project's own checkout.
+- If that root is a super-agent worker's worktree (a folder named `agent-*` under `.claude/worktrees/`), stop: setup runs in the project's own checkout, or in a worktree a person made for this work.
 - `node --version` must work (the hooks and the watchdog are Node scripts).
 - `git status --porcelain .claude CLAUDE.md`: if there are uncommitted changes, say so in one line and suggest committing first, so an upgrade is easy to review and undo. Don't block on it.
 
