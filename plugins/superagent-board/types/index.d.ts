@@ -71,6 +71,8 @@ declare module 'claude-code' {
       routerBusy: boolean
       /** Animation frame, advanced twice a second while there is a board. */
       frame: number
+      /** The agent map's seats and lifecycle state. */
+      map: Shaped<MapState>
     }
   }
 }

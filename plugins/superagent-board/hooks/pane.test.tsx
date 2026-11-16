@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 const NOW = Date.parse('2026-11-13T12:00:00Z')
 const min = (m: number) => new Date(NOW - m * 60_000).toISOString()
@@ -72,4 +72,39 @@ test('without a board the pane says how to start', async $ => {
   const ui = await $.ui.mount(pane('terminal'))
   expect((await ui.find({ type: 'Text', text: /No tickets yet/ }))?.text).toBeTruthy()
   await ui.unmount()
+})
+
+test('an agent heard through its lifecycle events takes a seat on the map before the agent list knows it', async ($, on) => {
+  const clock = mock.clock(on, { now: NOW })
+  on('command.register', () => ({ value: { command: 'board' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [{ id: 'superagent-board', title: 'Super-agent', isShown: true, isFocused: false, isPlaced: true }] }))
+  on('ui.status', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: '/proj' }))
+  on('agent.list', () => ({ value: [] }))
+  on('fs.exists', (_, e) => ({ value: (e as { path: string }).path in DIRS }))
+  on('fs.list', (_, e) => ({ value: DIRS[(e as { path: string }).path] ?? [] }))
+  on('fs.stat', (_, e) => ({ value: { kind: (e as { path: string }).path === '/proj/.git' ? 'dir' : 'file', size: 1, mtimeMs: NOW, isLink: false } }))
+  on('fs.read', (_, e) => {
+    const text = FILES[(e as { path: string }).path]
+    if (text === undefined) throw new Error('ENOENT')
+    return { value: text }
+  })
+  on('tool.call', () => ({ result: { text: 'ok' } }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/proj', surface: 'terminal', isInteractive: true })
+  const mapDots = async () => {
+    const ui = await $.ui.mount(pane('terminal'))
+    const rows = await ui.findAll({ type: 'Text', text: /^[●·] [●·] / })
+    const longest = rows.map(r => r.text ?? '').sort((a, b) => b.length - a.length)[0] ?? ''
+    await ui.unmount()
+    return (longest.match(/●/g) ?? []).length
+  }
+  const before = await mapDots() // router, watchdog, and the two workers known from status files
+  await $.turn.start({ text: '', turnId: 't1', agentId: 'a1' })
+  await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'a1' })
+  await clock.advance(600) // one animation frame
+  expect(await mapDots()).toBe(before + 1)
 })
