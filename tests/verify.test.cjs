@@ -74,3 +74,15 @@ test('a broken hook fails verify', () => {
   assert.strictEqual(r.out.ok, false)
   assert.ok(r.out.selftest.some(t => !t.ok && /router-guard/.test(t.name)))
 })
+
+test('verify leaves .job untouched', () => {
+  const p = makeRepo()
+  run('apply', p)
+  fillAll(p)
+  fs.mkdirSync(path.join(p, '.job'), { recursive: true })
+  fs.writeFileSync(path.join(p, '.job/status-alice.json'), JSON.stringify({ agent: 'alice', ticket: '001', phase: 'blocked', blocker: 'q' }))
+  const snapshot = () => fs.readdirSync(path.join(p, '.job')).sort().map(f => [f, fs.readFileSync(path.join(p, '.job', f), 'utf8')])
+  const before = snapshot()
+  assert.strictEqual(run('verify', p).out.ok, true)
+  assert.deepStrictEqual(snapshot(), before)
+})

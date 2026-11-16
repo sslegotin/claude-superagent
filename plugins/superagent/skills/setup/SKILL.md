@@ -16,7 +16,7 @@ node ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/install.cjs plan   --project <ro
 node ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/install.cjs apply  --project <root> [--take <file>]... [--blocks <json file>] [--backup]
 node ${CLAUDE_PLUGIN_ROOT}/skills/setup/scripts/install.cjs verify --project <root>
 ```
-Each prints one JSON object. `{"error": …}` with exit 2 means it refused; tell the user why in plain words.
+Each prints one JSON object. `{"error": …}` with exit 2 means it refused and wrote nothing; exit 1 means an unexpected failure. Tell the user why in plain words. `apply` checks every input before it writes anything, so a refusal never leaves a half-done install.
 
 What each block needs, with examples per project type, is in `${CLAUDE_PLUGIN_ROOT}/skills/setup/blocks.md`. Read it before filling anything.
 
@@ -24,19 +24,27 @@ Ask the user with AskUserQuestion, **one question at a time**, with your recomme
 
 ## 1. Preflight
 
-- The project root is `git rev-parse --show-toplevel`. If this isn't a git repository, offer to run `git init` and make a first commit; each batch is built on a branch made from `main`, so at least one commit must exist.
+- The project root is `git rev-parse --show-toplevel`. If this isn't a git repository, offer to run `git init -b main` and make a first commit; each batch is built on a branch made from `main`, so at least one commit must exist.
+- If that root is an agent's worktree (a path under `.claude/worktrees/`), stop: setup runs in the project's own checkout.
 - `node --version` must work (the hooks and the watchdog are Node scripts).
 - `git status --porcelain .claude CLAUDE.md`: if there are uncommitted changes, say so in one line and suggest committing first, so an upgrade is easy to review and undo. Don't block on it.
 
 ## 2. Plan
 
-Run `plan`. Tell the user in two or three lines what will happen, using `mode`:
+Run `plan`. First check two things it reports:
+- `mainBranch: false`: the agents build every batch from a branch called `main`, and this repository has none (often it's `master`). Explain that, and offer to rename the current default branch (`git branch -m <branch> main`); run it only on a yes. If they'd rather not, stop: the setup would fail at the first batch.
+- `batchRunning: true`: a batch is in progress (the checkout is on `batch/…`, or a merge lock exists). Changes now would land on the batch branch and disturb the running agents. Recommend finishing or stopping the batch first, and continue only if the user insists.
+
+Then tell the user in two or three lines what will happen, using `mode`:
 - `fresh`: a new install. List roughly what gets added.
 - `upgrade` (from `from` to `to`): files replaced, filled blocks carried over, new blocks to fill (`blocks.<file>.new`), files that will be removed.
-- `current`: already on this version. Offer to re-check the blocks against the project (step 6 onwards) in case its commands changed.
+- `current`: already on this version. If the plan still lists files to add or replace, settings or `.gitignore` changes (e.g. someone deleted a hook), say so and run `apply`. Otherwise offer to re-check the blocks against the project (step 6 onwards) in case its commands changed.
+- `downgrade`: the plugin on this machine is older than the setup already installed (someone upgraded it on another machine). Don't apply. Tell the user to update the plugin (`/plugin marketplace update superagent`) and run setup again.
 - `adopt`: the setup was copied in by hand before this plugin existed (no `.claude/superagent.json`). See step 4.
 
 Also mention `settings` changes and `gitignore` entries in one line each.
+
+**Blocks the new version drops.** `blocks.<file>.droppedFilled` lists blocks that hold project text but no longer exist in the new version (a block was renamed or split). `apply` refuses until each is handled. Show the user the text, propose the new block it belongs in, and on their OK pass it with `--blocks` plus `--drop <file>:<old id>`; if it's no longer needed, pass only `--drop`.
 
 ## 3. Files the project edited (upgrade)
 

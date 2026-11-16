@@ -234,3 +234,138 @@ test('rules.json keeps project values on upgrade', () => {
   assert.strictEqual(after.health_command, 'make ping')
   assert.strictEqual(after.new_key, 7)
 })
+
+// ---- final-review fixes ----
+
+test('older plugin refuses to downgrade', () => {
+  const p = makeRepo()
+  run('apply', p, '--template', makePluginCopy('9.9.9'))
+  const plan = run('plan', p).out
+  assert.strictEqual(plan.mode, 'downgrade')
+  const r = run('apply', p)
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /older/)
+  assert.strictEqual(JSON.parse(read(p, '.claude/superagent.json')).version, '9.9.9')
+})
+
+test('broken rules.json stops apply before any write', () => {
+  const p = makeRepo()
+  run('apply', p)
+  fs.writeFileSync(path.join(p, '.claude/watchdog/rules.json'), '{"interval_minutes": 10,}')
+  const tpl = makePluginCopy('9.9.9')
+  const tw = path.join(tpl, WORKER)
+  fs.writeFileSync(tw, fs.readFileSync(tw, 'utf8').replace('You are a worker.', 'You are a worker, version nine.'))
+  const before = read(p, WORKER)
+  const r = run('apply', p, '--template', tpl)
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /rules\.json/)
+  assert.strictEqual(read(p, WORKER), before)
+})
+
+test('empty settings.json counts as empty', () => {
+  const p = makeRepo()
+  fs.mkdirSync(path.join(p, '.claude'))
+  fs.writeFileSync(path.join(p, '.claude/settings.json'), '')
+  const r = run('apply', p)
+  assert.strictEqual(r.status, 0, r.stdout)
+  assert.strictEqual(JSON.parse(read(p, '.claude/settings.json')).env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS, '1')
+})
+
+test('unchanged settings and rules are not rewritten', () => {
+  const p = makeRepo()
+  run('apply', p)
+  const s = JSON.stringify(JSON.parse(read(p, '.claude/settings.json')), null, 4)
+  fs.writeFileSync(path.join(p, '.claude/settings.json'), s)
+  const rules = JSON.stringify(JSON.parse(read(p, '.claude/watchdog/rules.json')), null, '\t')
+  fs.writeFileSync(path.join(p, '.claude/watchdog/rules.json'), rules)
+  run('apply', p)
+  assert.strictEqual(read(p, '.claude/settings.json'), s)
+  assert.strictEqual(read(p, '.claude/watchdog/rules.json'), rules)
+})
+
+function adoptProject() {
+  const p = makeRepo()
+  fs.mkdirSync(path.join(p, '.claude/agents'), { recursive: true })
+  fs.writeFileSync(path.join(p, '.claude/agents/router.md'), 'hand-filled router\n')
+  return p
+}
+const blocksFile = (p, obj) => {
+  const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sa-blocks-')), 'blocks.json')
+  fs.writeFileSync(f, JSON.stringify(obj))
+  return f
+}
+
+test('blocks with an unknown id are refused', () => {
+  const p = adoptProject()
+  const r = run('apply', p, '--backup', '--blocks', blocksFile(p, { '.claude/agents/router.md': { 'router-portz': 'x' } }))
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /router-portz/)
+  assert.strictEqual(read(p, '.claude/agents/router.md'), 'hand-filled router\n')
+})
+
+test('blocks for a file not being written are refused', () => {
+  const p = adoptProject()
+  const r = run('apply', p, '--backup', '--blocks', blocksFile(p, { '.claude/agents/nope.md': { 'router-ports': 'x' } }))
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /nope\.md/)
+})
+
+test('block text containing a marker is refused', () => {
+  const p = adoptProject()
+  const r = run('apply', p, '--backup', '--blocks',
+    blocksFile(p, { '.claude/agents/router.md': { 'router-ports': 'x <!-- /PROJECT:router-ports --> y' } }))
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /router\.md/)
+  assert.strictEqual(read(p, '.claude/agents/router.md'), 'hand-filled router\n')
+})
+
+function renameWorkerBlock() {
+  const tpl = makePluginCopy('9.9.9')
+  const tw = path.join(tpl, WORKER)
+  fs.writeFileSync(tw, fs.readFileSync(tw, 'utf8').replaceAll('PROJECT:worker-run', 'PROJECT:worker-setup'))
+  return tpl
+}
+
+test('a filled block the new version drops stops apply', () => {
+  const p = makeRepo()
+  run('apply', p)
+  fillWorker(p, '\nmine\n')
+  const tpl = renameWorkerBlock()
+  const plan = run('plan', p, '--template', tpl).out
+  assert.deepStrictEqual(plan.blocks[WORKER].dropped, ['worker-run'])
+  const r = run('apply', p, '--template', tpl)
+  assert.strictEqual(r.status, 2)
+  assert.match(r.out.error, /worker-run/)
+  assert.match(read(p, WORKER), /\nmine\n/)
+})
+
+test('a dropped block can be remapped with --blocks', () => {
+  const p = makeRepo()
+  run('apply', p)
+  fillWorker(p, '\nmine\n')
+  const tpl = renameWorkerBlock()
+  const r = run('apply', p, '--template', tpl, '--blocks', blocksFile(p, { [WORKER]: { 'worker-setup': '\nmine\n' } }), '--drop', `${WORKER}:worker-run`)
+  assert.strictEqual(r.status, 0, r.stdout)
+  assert.strictEqual(parseBlocks(read(p, WORKER), WORKER)['worker-setup'], '\nmine\n')
+})
+
+test('an unfilled dropped block needs no decision', () => {
+  const p = makeRepo()
+  run('apply', p)
+  const r = run('apply', p, '--template', renameWorkerBlock())
+  assert.strictEqual(r.status, 0, r.stdout)
+})
+
+test('plan reports whether a main branch exists', () => {
+  const p = makeRepo()
+  assert.strictEqual(run('plan', p).out.mainBranch, true)
+  git(p, 'branch', '-m', 'main', 'master')
+  assert.strictEqual(run('plan', p).out.mainBranch, false)
+})
+
+test('plan reports a running batch', () => {
+  const p = makeRepo()
+  assert.strictEqual(run('plan', p).out.batchRunning, false)
+  git(p, 'checkout', '-q', '-b', 'batch/x')
+  assert.strictEqual(run('plan', p).out.batchRunning, true)
+})

@@ -54,7 +54,7 @@ Update the plugin (`/plugin marketplace update superagent`), then run `/superage
 
 ## Uninstall
 
-Delete from the project: `.claude/agents/{router,worker,teammate,tester,reviewer,merger,checker,reproducer,watchdog}.md`, `.claude/hooks/`, `.claude/watchdog/`, `.claude/skills/write-tickets/`, `.claude/README.md`, `.claude/superagent.json`, and the `superagent` entries in `.claude/settings.json`. Then `/plugin uninstall superagent@superagent` and `/plugin uninstall superagent-board@superagent`.
+Delete from the project: `.claude/agents/{router,worker,teammate,tester,reviewer,merger,checker,reproducer,watchdog}.md`, `.claude/hooks/`, `.claude/watchdog/`, `.claude/skills/write-tickets/`, `.claude/README.md`, `.claude/superagent.json`, and from `.claude/settings.json` the `superagent` marketplace, the two `@superagent` plugin entries and `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (unless you use agent teams otherwise). The `.claude/worktrees/` and `.job/` lines in `.gitignore` can stay. Then `/plugin uninstall superagent@superagent` and `/plugin uninstall superagent-board@superagent`.
 
 ## More
 

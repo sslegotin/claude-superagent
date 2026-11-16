@@ -1,6 +1,7 @@
 // Checks an installed setup: every project block filled, and the helper scripts behave as the
 // agents rely on (a crashing hook would let everything through).
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { unfilledIds } = require('./blocks.cjs')
@@ -21,8 +22,17 @@ function selftests(project) {
       return [r.status === 0 && r.stdout.trim() === '', r.stdout.trim() || r.stderr.trim()]
     }],
     ['watchdog check runs', () => {
-      const r = runNode(project, ['.claude/watchdog/check.cjs'])
-      return [r.status === 0, `exit ${r.status} ${r.stderr.trim()}`.trim()]
+      // In a scratch repository: a real round in the project would record its findings in
+      // .job/watchdog-state.json as already reported, hiding them from the router's next round.
+      const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'superagent-verify-'))
+      try {
+        spawnSync('git', ['init', '-q'], { cwd: scratch })
+        fs.cpSync(path.join(project, '.claude', 'watchdog'), path.join(scratch, '.claude', 'watchdog'), { recursive: true })
+        const r = runNode(scratch, ['.claude/watchdog/check.cjs'])
+        return [r.status === 0, `exit ${r.status} ${r.stderr.trim()}`.trim()]
+      } finally {
+        fs.rmSync(scratch, { recursive: true, force: true })
+      }
     }],
     ['verify-results reports a missing ticket as incomplete', () => {
       const r = runNode(project, ['.claude/hooks/verify-results.cjs', 'specs/tickets/none'])

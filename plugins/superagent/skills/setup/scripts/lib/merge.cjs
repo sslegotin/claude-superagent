@@ -30,7 +30,8 @@ function mergeSettings(settings) {
   }
   s.enabledPlugins ??= {}
   for (const id of PLUGINS) {
-    if (s.enabledPlugins[id] !== true) {
+    // Only add a missing entry: an explicit false is the user's choice and stays.
+    if (!(id in s.enabledPlugins)) {
       s.enabledPlugins[id] = true
       changes.push(`enabledPlugins: enable ${id}`)
     }

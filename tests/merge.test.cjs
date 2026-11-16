@@ -73,3 +73,9 @@ test('gitignore keeps an entry that is already there', () => {
   assert.deepStrictEqual(added, ['.claude/worktrees/'])
   assert.strictEqual(text, '.job/\n\n# Added by the super-agent setup\n.claude/worktrees/\n')
 })
+
+test('a plugin the user turned off stays off', () => {
+  const { settings, changes } = mergeSettings({ enabledPlugins: { 'superagent-board@superagent': false } })
+  assert.strictEqual(settings.enabledPlugins['superagent-board@superagent'], false)
+  assert.ok(!changes.some(c => /superagent-board@superagent$/.test(c)))
+})

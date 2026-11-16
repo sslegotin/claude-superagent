@@ -52,6 +52,6 @@ you ⇄ router ──every 10 min (cron)──► check.cjs ──problems──
 | `.claude/settings.json`, `.claude/watchdog/rules.json`, `.gitignore` | shared | setup adds its keys and keeps yours |
 | `.claude/superagent.json` | plugin | the installed version and file hashes; commit it |
 | `CLAUDE.md`, `specs/` | you | never overwritten |
-| `.claude/worktrees/`, `.job/` | runtime | git-ignored; never touched by setup |
+| `.claude/worktrees/`, `.job/` | runtime | git-ignored; setup never reads or changes the agents' state there (it only adds `.job/superagent-backup/` when adopting a hand-installed setup) |
 
 The Claude Code behaviours this relies on, and how each was verified, are in [tested-facts.md](tested-facts.md).
