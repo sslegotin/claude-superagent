@@ -15,7 +15,7 @@ export type Inputs = {
 
 const ACTIVE_PHASES = ['setup', 'building', 'testing', 'reviewing', 'fixing']
 const PROGRESS: Record<string, number> = { setup: 0.1, building: 0.35, testing: 0.6, reviewing: 0.75, fixing: 0.85, checking: 0.95, done: 1 }
-const DONE_FADE_MS = 2 * 60_000
+export const DONE_FADE_MS = 2 * 60_000
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
 const time = (v: unknown, fallback?: number): number | undefined => {
   const t = typeof v === 'string' ? Date.parse(v) : NaN
@@ -114,6 +114,7 @@ export function buildSnapshot(input: Inputs): Snapshot {
       if (fromFile === 'blocked' || (fromFile === 'waiting' && dot === 'working')) dot = fromFile
     }
     agents.push({
+      id: a.id,
       name: a.teammateId?.split('@')[0] ?? s?.agent ?? a.type,
       ticket: s?.ticket ?? a.description.match(/\b\d{3}\b/)?.[0],
       label: s?.phase && s.phase !== 'unknown' ? s.phase : a.status,
@@ -125,7 +126,9 @@ export function buildSnapshot(input: Inputs): Snapshot {
     if (claimed.has(s)) continue
     const dot = statusDot(s, now, quietMs)
     if (!dot) continue
-    agents.push({ name: s.agent, ticket: s.ticket, label: s.phase, dot, updatedAt: s.updated, note: s.note, quiet: isQuiet(s, now, quietMs), waitingOn: s.waitingOn })
+    // A finished agent's file still speaks for it; its id lets the map draw it in the agent's seat, not twice.
+    const ended = input.agents.find(a => a.type !== 'watchdog' && agentDot(a) === null && matches(a, s))
+    agents.push({ id: ended?.id, name: s.agent, ticket: s.ticket, label: s.phase, dot, updatedAt: s.updated, note: s.note, quiet: isQuiet(s, now, quietMs), waitingOn: s.waitingOn })
   }
 
   // Tickets: the board, joined with the newest status file for each ticket.

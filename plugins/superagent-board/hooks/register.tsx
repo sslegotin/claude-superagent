@@ -2,6 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { DotState, Snapshot, TicketView } from '../types'
+import { applyEvents, blip, EMPTY_MAP, mapDots, reconcile } from './map'
+import type { MapEvent } from './map'
 import { ago, bar, buildSnapshot, fit, layoutMap, lit, MAP_INDENT, pickTickets, progress, summary } from './model'
 import type { RawAgent, RawStatus } from './model'
 
@@ -10,10 +12,19 @@ const TITLE = 'Super-agent'
 const REFRESH_MS = 2000
 
 // Change the shape tag when Snapshot's fields change: a reload then ignores what the old code stored.
-const snapshot = atom({ plugin: 'superagent-board', key: 'snapshot' } as const, null, { shape: 'snapshot-2' })
+const snapshot = atom({ plugin: 'superagent-board', key: 'snapshot' } as const, null, { shape: 'snapshot-3' })
 const routerBusy = atom({ plugin: 'superagent-board', key: 'routerBusy' } as const, false)
 const frame = atom({ plugin: 'superagent-board', key: 'frame' } as const, 0)
 const FRAME_MS = 500
+const mapState = atom({ plugin: 'superagent-board', key: 'map' } as const, EMPTY_MAP, { shape: 'map-2' })
+
+// Lifecycle events for the agent map, gathered by the hooks and drained into `mapState` on each animation
+// frame. A hook only notes the event here and passes it on: it never waits, so it can't slow an agent.
+let pending: MapEvent[] = []
+type Noted = { kind: 'start'; agentId: string } | { kind: 'activity'; agentId?: string } | { kind: 'end'; agentId: string; reason: 'answer' | 'aborted' | 'refusal' | 'error' }
+function record($: EngineInterface, ev: Noted): void {
+  void $.clock.now().then(at => { pending.push({ ...ev, at } as MapEvent) }).catch(() => {})
+}
 
 const DOT_COLOR: Record<DotState, string | undefined> = {
   working: 'success', waiting: 'warning', blocked: 'error', done: 'suggestion', free: undefined,
@@ -75,7 +86,7 @@ async function agentWorktrees($: EngineInterface, cwd: string): Promise<string[]
   return found
 }
 
-async function gather($: EngineInterface): Promise<Snapshot> {
+async function gather($: EngineInterface): Promise<{ snap: Snapshot; agents: RawAgent[] }> {
   const cwd = await $.session.cwd()
   const at = (rel: string) => `${cwd}/${rel}`
   const now = await $.clock.now()
@@ -111,18 +122,19 @@ async function gather($: EngineInterface): Promise<Snapshot> {
     agents = (await $.agent.list()).map(a => ({ id: a.id, type: a.type, status: a.status, description: a.description, teammateId: a.teammateId }))
   } catch {}
 
-  return buildSnapshot({ now, boardText: await readText($, at('specs/tickets/BOARD.md')), statuses, agents, watchdogState, rules })
+  return { snap: buildSnapshot({ now, boardText: await readText($, at('specs/tickets/BOARD.md')), statuses, agents, watchdogState, rules }), agents }
 }
 
 let lastKey = ''
 async function refresh($: EngineInterface): Promise<void> {
-  const snap = await gather($)
+  const { snap, agents } = await gather($)
   // Redraw when something changed, or every 30 s so the "Xm ago" times move.
   const key = JSON.stringify({ ...snap, at: Math.floor(snap.at / 30_000) })
   if (key !== lastKey) {
     lastKey = key
     await update($, snapshot, () => snap)
   }
+  await update($, mapState, s => reconcile(s, agents, snap.at))
   $.ui.status(snap.hasBoard ? summary(snap) : undefined)
 }
 
@@ -134,6 +146,11 @@ export const register: Register = on => {
     // Animation: only while a pane is open on a board, so an idle session redraws nothing.
     $.clock.every(FRAME_MS, () => {
       void (async () => {
+        if (pending.length) {
+          const drained = pending
+          pending = []
+          await update($, mapState, s => applyEvents(s, drained))
+        }
         if (!lastKey.includes('"hasBoard":true')) return
         if (!(await $.ui.panes()).some(p => p.id === PANE)) return
         await update($, frame, n => (n + 1) % 1_000_000)
@@ -156,11 +173,24 @@ export const register: Register = on => {
   })
 
   on('turn.start', async ($, e, next) => {
-    if (!e.agentId) await update($, routerBusy, () => true)
+    if (e.agentId) record($, { kind: 'start', agentId: e.agentId })
+    else await update($, routerBusy, () => true)
     return next(e)
   })
   on('turn.complete', async ($, e, next) => {
-    if (!(e as { agentId?: string }).agentId) await update($, routerBusy, () => false)
+    if (e.agentId) record($, { kind: 'end', agentId: e.agentId, reason: e.reason })
+    else await update($, routerBusy, () => false)
+    return next(e)
+  })
+  // A model request and a tool call each blink the agent's dot. Tool calls are heard at `tool.check`, which
+  // decides on a call without running it: a hook on `tool.call` would wrap the router's Agent call, and the
+  // engine keeps an agent's own events from the hooks its spawn ran inside.
+  on('turn.step', async function* ($, e, next) {
+    record($, { kind: 'activity', agentId: e.agentId })
+    return yield* next(e)
+  })
+  on('tool.check', async ($, e, next) => {
+    if (e.tool_use_id) record($, { kind: 'activity', agentId: e.agentId }) // without an id it's a query, not a call
     return next(e)
   })
 
@@ -233,17 +263,23 @@ export const register: Register = on => {
 
     // Dot map: router and watchdog first, then every worker, filling the pane's width in MAP_ROWS rows.
     const f = await read($, frame)
-    const rows = layoutMap(cols, snap.agents.map(a => a.dot))
+    const m = await read($, mapState)
+    const clockNow = await $.clock.now()
+    const { dots, activity, seated } = mapDots(m, snap.agents)
+    const rows = layoutMap(cols, dots)
     const dot = (state: DotState, isLit: boolean) => (
       <Text color={DOT_COLOR[state]} dimColor={state === 'free' || !isLit}>{state === 'free' ? '·' : '●'} </Text>
     )
-    const routerDot = dot('working', busy && lit('router-busy', f, 0))
+    // A seated working dot stays lit and blinks off once for each request or tool call (steady = silent).
+    const cellLit = (c: DotState, k: number) =>
+      c === 'working' && k < seated ? !blip(activity[k], clockNow, f, 2 + k) : lit(c, f, 2 + k)
+    const routerDot = dot('working', busy && !blip(m.routerActivity, clockNow, f, 0))
     const watchdogDot = dot(wd.dot, wd.dot === 'working' ? lit('watchdog', f, 1) : lit(wd.dot, f, 1))
     const perRow = rows[0]?.length ?? 0
     const mapRows = rows.map((row, i) => (
       <Text>
         {i === 0 ? <Text>{routerDot}{watchdogDot} </Text> : <Text>{' '.repeat(MAP_INDENT)}</Text>}
-        {row.map((c, j) => (typeof c === 'string' ? dot(c, lit(c, f, 2 + i * perRow + j)) : <Text color="warning">+{c.more}</Text>))}
+        {row.map((c, j) => (typeof c === 'string' ? dot(c, cellLit(c, i * perRow + j)) : <Text color="warning">+{c.more}</Text>))}
       </Text>
     ))
 
