@@ -10,13 +10,13 @@ Installed and kept up to date by the `superagent` plugin (`/superagent:setup`). 
 |---|---|
 | `agents/router.md` | The main session you talk to. Opus, high effort. Runs one batch at a time, starts agents and checks results; a hook stops it from editing anything itself. |
 | `agents/watchdog.md` | Short-lived investigator. Every 10 min the router runs `watchdog/check.cjs` on a timer (CronCreate); when it flags an agent as stuck, drifting or broken, the router starts the watchdog to look into it. |
-| `agents/worker.md` | Builds one solo ticket in its own worktree (made from the batch branch), with tester + reviewer, syncs with the batch and commits on its branch. |
+| `agents/worker.md` | Takes one solo ticket to a commit in a worktree made from the batch branch, with its own tester and reviewer, merging the latest batch in before it reports. |
 | `agents/teammate.md` | One member of an agent team for a `team` ticket, in the main checkout. One member is the integration owner and runs the final check on the combined work. |
 | `agents/tester.md` | Runs a ticket's `eval.md` checks exactly as written. |
 | `agents/reviewer.md` | Reviews a diff against the ticket's `rd.md`. |
 | `agents/merger.md` | All git integration: opens the batch branch, merges each finished ticket into it (lint, build, tests; rolls back on failure; never resolves conflicts), removes finished worktrees, and delivers the batch as one PR or one merge into `main`. |
 | `agents/checker.md` | After each merge, walks the app like a first-time user in its own worktree of the batch, and reports confirmed breaks and the revision it checked. |
-| `agents/reproducer.md` | Reproduces a bug twice and fixes it on its own branch when the fix is small. |
+| `agents/reproducer.md` | Makes a reported bug happen twice, and fixes it on a branch of its own when the change is small. |
 | `skills/write-tickets/` | Turns feature requests into `specs/tickets/NNN-slug/{rd.md, eval.md}` plus `BOARD.md`, planned for parallel work (hard waits vs overlaps) and grouped into batches. |
 | `hooks/router-guard.cjs` | Blocks the router's own Write/Edit and non-read-only Bash. Teammates and subagents are not affected. |
 | `hooks/worker-stop.cjs` | Won't let a worker stop until its work is committed and its committed results are complete, or it has marked itself blocked or failed. |

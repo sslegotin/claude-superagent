@@ -39,4 +39,4 @@
 - [ ] All automated checks pass
 - [ ] All acceptance checks E-1…E-n pass
 - [ ] All edge case checks pass
-- [ ] No items from "Out of scope" were built
+- [ ] Nothing listed under "Out of scope" was built

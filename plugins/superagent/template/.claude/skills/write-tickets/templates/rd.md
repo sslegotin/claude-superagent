@@ -35,5 +35,5 @@
 
 ## Decisions made
 - **Agreed with the user**: <decision>
-- **Decided by the ticket writer** (the user was away when asked; recommended defaults, please confirm):
+- **Chosen by the ticket writer** (no answer from the user; recommended defaults, please confirm):
   - <decision>

@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews a worker's or team member's diff against the ticket's rd.md before it's handed back. Checks that every requirement is actually built, nothing out of scope or in "Do not touch" changed, and the code has no real bugs, security holes or clashes with the project's patterns. Returns APPROVE or numbered findings. Read-only, never fixes anything. Started by a worker or a team member.
+description: Code review before hand-back. A worker or team member gives it the ticket; it reads their diff against rd.md and checks that each requirement really exists in the code, that nothing out of scope or marked "Do not touch" was changed, and that there are no real bugs, security holes or departures from the project's patterns. Answers APPROVE or a numbered list of findings. Changes nothing.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: high

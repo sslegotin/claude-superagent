@@ -24,7 +24,7 @@ The router's prompt gives you the ticket folder, the batch branch, your part, th
    - **who owns which files**: one list per member, as exact paths or globs. No two members own the same file. The merger commits exactly these paths, so a file nobody owns won't be committed.
    - the names, types and function signatures other parts rely on
    - shared conventions (timestamps, error handling, naming)
-   - signals between members, e.g. "schema posts 'migration live' once the database is updated; checks that write to new tables wait for it"
+   - signals between members, e.g. "once the migration has run, schema sends 'tables ready', and checks that write to the new tables wait for that message"
    - **which eval.md checks each member runs** for its own part, and which checks only make sense on the whole feature (those run once, in the final pass)
 
    Once everyone has replied "agreed", treat it as fixed. Change it only by messaging every member and getting their agreement.

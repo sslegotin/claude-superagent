@@ -1,16 +1,16 @@
 ---
 name: write-tickets
-description: Turn feature requests into tickets that workers can build in parallel without asking questions. Each feature gets its own folder with rd.md (the requirements) and eval.md (a concrete, pass/fail way to check the feature was built correctly, including browser checks for web apps). Tickets start as draft and only become ready after the user approves them, and a board shows which tickets can run at the same time and groups them into batches (one PR each). Use this skill whenever the user asks to write tickets, spec out or scope a feature, write requirements, a PRD or acceptance criteria, break a feature list into work items, or plan features before building them, even if they never say "ticket". Use it whenever the user lists one or more things they want built and wants them written down rather than coded right away.
+description: Writes features down as tickets that agents can build side by side with no questions left to ask. A ticket is a folder: rd.md says what to build, eval.md says exactly how to tell, pass or fail, that it was built right (browser checks included for web apps). Every ticket begins as a draft and turns ready only once the user approves it, and a board lists which tickets can run together and groups them into batches (one PR each). Use this skill whenever the user asks to write tickets, spec out or scope a feature, write requirements, a PRD or acceptance criteria, break a feature list into work items, or plan features before building them, even if they never say "ticket". Use it whenever the user lists one or more things they want built and wants them written down rather than coded right away.
 ---
 
 # Write Tickets
 
-Turn each feature the user asks for into a ticket: a folder holding two files.
+Every feature the user wants becomes one ticket, which is a folder with two files in it.
 
-- **rd.md**: the requirements. What to build and why, specific enough that someone could build it without asking follow-up questions.
-- **eval.md**: the check. Concrete steps that anyone, human or agent, can run on the finished work to get a clear pass or fail on each requirement, without having to judge for themselves.
+- **rd.md** holds the requirements: what gets built and why, precise enough that a builder never has to come back with a question.
+- **eval.md** holds the checks: concrete steps a person or an agent can follow on the finished work, each ending in a plain pass or fail per requirement, with no judgment calls.
 
-The two files work as a pair. rd.md says what "done" means. eval.md proves it. Every requirement in rd.md is covered by at least one check in eval.md, and every check names the requirements it covers.
+One file defines "done", the other proves it. Every requirement in rd.md is covered by at least one check in eval.md, and every check names the requirements it covers.
 
 Tickets are built later by agents that can't ask anyone anything: a worker for a `solo` ticket, an agent team for a `team` ticket, coordinated by the router (`.claude/agents/router.md`). Whatever you leave unclear, they will guess.
 
@@ -18,29 +18,29 @@ Tickets are built later by agents that can't ask anyone anything: a worker for a
 
 ### 1. Split the request into features
 
-One ticket per feature. A feature is the smallest piece that can be shipped and checked on its own and that is worth something to a user.
+Make one ticket for each feature, where a feature is the smallest slice that a user would value and that can ship and be checked by itself.
 
-- "Add auth and a dashboard" is two tickets.
-- "Add a button, and make the button save the form" is one ticket, because the button is useless without the saving.
-- A large epic ("build a CRM") becomes several tickets. Tell the user how you split it, so they can merge or split tickets differently if they want.
+- "Login plus a reports page": two tickets.
+- "A Save button that stores the form": one ticket, since a button that saves nothing is worthless on its own.
+- A big epic ("an invoicing system") turns into several tickets. Show the user where you cut it, so they can regroup the pieces if they prefer.
 
-If one ticket needs another to be done first, note it. It goes in the board's Runs column (steps 7 and 8).
+Note any ticket that can't start until another is done. It goes in the board's Runs column (steps 7 and 8).
 
 ### 2. Read the codebase first
 
-Tickets based on the real code are much more useful than generic ones. Before writing, look at:
+A ticket grounded in the actual code beats a generic one. Before you write, check:
 
-- The stack, plus the scripts in `package.json` / `Makefile` / `pyproject.toml` (dev server, build, lint, test commands). eval.md should use the project's real commands.
-- The files, routes, components, data models and APIs the feature will touch. Name them in rd.md under Affected areas.
-- Patterns already in use (state management, styling, data fetching, test framework). Requirements shouldn't conflict with these without a stated reason.
-- Any project docs (README, AGENTS.md, CLAUDE.md, framework docs in `node_modules`) that affect how the feature must be built.
+- What the project is built with, and its commands in `package.json` / `Makefile` / `pyproject.toml` / `go.mod` (run, build, lint, test). eval.md uses those real commands.
+- Which parts of the code the feature reaches (files, routes, components, data models, APIs). They go in rd.md's Affected areas.
+- The patterns the code already follows (state, styling, data access, testing). A requirement that goes against them must say why.
+- Docs that constrain the build: README, CLAUDE.md, AGENTS.md, framework docs.
 - The `## Conventions` section of `CLAUDE.md`, if there is one: how code is organised in this project (where features, routes, types and tests go). Tickets must fit it, and a ticket that needs to break a convention says so and why.
 
-Keep this short. You're checking enough to write precise tickets, not auditing the whole repo.
+Keep it brief: the aim is precise tickets, not a review of the whole repository.
 
-### 3. Interview the user until nothing is left to guess
+### 3. Interview the user until no guesses remain
 
-Workers can't ask questions later, so settle everything now. Interview the user about each feature, **one question at a time**. When there's a choice, offer the options (with your recommendation first) rather than an open question. Keep going until a worker could build the feature without making any decision that changes what the user sees or gets.
+Nobody can ask anything once building starts, so every open point is settled here. Go through each feature with the user **one question at a time**, giving options with your recommendation first whenever there's a choice. Stop only when no decision is left that would change what the user sees or gets.
 
 - Ask about anything that changes the feature's behaviour, look, data or limits: edge cases, empty and error states, permissions, what happens to existing data.
 - Don't ask about things the code already answers, or about internal details a worker can pick sensibly. Decide those yourself and record them.
@@ -125,6 +125,6 @@ Only when the user explicitly approves: a whole batch ("make batch boards-v2 rea
 2. Set the Status cell of the same rows in `specs/tickets/BOARD.md` to `ready`.
 3. If they mark single tickets, check the batch still includes everything those tickets wait for, and say so if not.
 4. Tell them what the router will do: which batch it runs, the order (what starts at once, what waits), and the decisions they confirm by approving.
-5. Remind them to **commit** `specs/` (and any `.claude/` or `CLAUDE.md` changes) to `main` before starting the router with `claude --agent router --name router --permission-mode auto`. The router builds each batch on its own branch made from `main`.
+5. Tell them to **commit** `specs/` (plus any `.claude/` or `CLAUDE.md` changes) to `main` first, then start the router with `claude --agent router --name router --permission-mode auto`. The router builds each batch on its own branch made from `main`.
 
 Never mark a ticket ready on your own judgment, and never set `done`. Only the merger does that.

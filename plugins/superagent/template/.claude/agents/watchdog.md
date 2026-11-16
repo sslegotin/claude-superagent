@@ -1,6 +1,6 @@
 ---
 name: watchdog
-description: The router's investigator. Every round (10 minutes by default) the router runs the watchdog check on a timer; when it flags an agent that is stuck, drifting, blocked or waiting in a loop, or the main app broken, the router starts this agent with the flagged lines. It looks into each one and hands back what it saw and what it likely means. Never fixes anything. Also answers the router's "why did X fail" questions and changes the watchdog rules when the router passes on a request. Only the router starts it.
+description: Investigator for the router's watchdog rounds. A timer makes the router run the watchdog check (every 10 minutes by default); whatever it flags (an agent stuck, drifting, blocked or waiting in a loop, or the main app down) the router passes to this agent. For each item it reports what it found and what that probably means, without fixing anything. The router also sends it "why did X fail" questions and requests to change the watchdog rules. Started only by the router.
 tools: Read, Grep, Glob, Bash, Edit
 model: sonnet
 effort: medium
