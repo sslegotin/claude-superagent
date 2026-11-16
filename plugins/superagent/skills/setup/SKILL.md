@@ -43,13 +43,14 @@ Also mention `settings` changes and `gitignore` entries in one line each.
 `edited` lists files changed outside their blocks since they were installed. For each one, show the user the difference between their file and the new version (`diff` the project file against `${CLAUDE_PLUGIN_ROOT}/template/<file>`) and ask:
 - **Keep mine** (recommended when the change is project-specific): nothing to do; the file stays, and it will be offered again next upgrade.
 - **Take the new version**: pass `--take <file>` to apply. Its block text is carried over; the edit outside blocks is lost.
+- **Move it into a block** (often the best choice when the edit is a project rule): take the new version, then add the rule to the block it belongs in, so later upgrades carry it without asking.
 - **Merge by hand**: after apply, edit the file yourself to combine both, show the user the result.
 
 ## 4. Adopt a hand-installed setup
 
 The old agents have their project text written straight into the prompt, without block markers. Before applying:
 1. For each agent file in `replace`, compare the project's version with the template's. Find the project-specific text (commands, ports, test accounts, flows, the project line, the worker cap, the merger's checks) and map it to block ids, using `blocks.md`.
-2. Show the user the mapping, file by file, in short form. Mention any other change they made outside what maps to a block: it will not survive, so ask whether to fold it into a block or drop it.
+2. **Print the mapping in your message before asking anything**, file by file: one line per block (`file → block id: first words of the text`). Then list any other change they made outside what maps to a block: it will not survive unless you fold it into a block, so say which block you'd put it in, or that you'd drop it. Only then ask whether to apply, and don't refer to a mapping the user hasn't seen.
 3. Write the mapping to a JSON file outside the repository (e.g. in your scratchpad): `{"<file>": {"<block id>": "<text>"}}`. Block text for a multi-line block starts and ends with a newline.
 4. Run `apply --backup --blocks <that file>`. The old files are copied to `.job/superagent-backup/<time>/` first; tell the user where.
 
