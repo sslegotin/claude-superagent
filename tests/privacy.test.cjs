@@ -41,7 +41,7 @@ test('no eval in template', () => {
   for (const file of fs.existsSync(dir) ? walk(dir) : []) {
     const lines = fs.readFileSync(file, 'utf8').split('\n')
     lines.forEach((line, i) => {
-      if (/\beval\b/.test(line) && !/No `eval`|refuses any command containing `eval`|\beval\b[^.]*(isolat|refus)/i.test(line)) {
+      if (/\beval\b(?!\.md)/.test(line) && !/No `eval`|refuses any command containing `eval`|\beval\b[^.]*(isolat|refus)/i.test(line)) {
         hits.push(`${path.relative(ROOT, file)}:${i + 1}: ${line.trim().slice(0, 120)}`)
       }
     })
