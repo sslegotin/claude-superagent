@@ -1,7 +1,7 @@
 // The agent map's own state: a fixed seat per agent, its colour from lifecycle events (backed up by the
 // agent list), and when it last did something, so a working dot can blink off once per model request or
 // tool call. Pure logic, no `$`.
-import type { MapState, MapTrack } from '../types'
+import type { AgentView, DotState, MapState, MapTrack } from '../types'
 import { DONE_FADE_MS } from './model'
 import type { RawAgent } from './model'
 
@@ -80,6 +80,33 @@ export function reconcile(state: MapState, list: RawAgent[], now: number): MapSt
     if (missing || faded) delete tracks[id]
   }
   return { ...state, tracks }
+}
+
+/**
+ * The map's worker dots: one per seat in seat order (an empty seat is 'free'), then the agents known only
+ * from a status file. An agent's own status file overrides its events: blocked is red, waiting on
+ * something is yellow. `activity` is the agent's last activity while its dot is working; `seated` is how
+ * many entries are seats.
+ */
+export function mapDots(state: MapState, views: AgentView[]): { dots: DotState[]; activity: (number | undefined)[]; seated: number } {
+  const tracks = Object.entries(state.tracks)
+  const seatedCount = tracks.reduce((n, [, t]) => Math.max(n, t.seat + 1), 0)
+  const dots: DotState[] = Array(seatedCount).fill('free')
+  const activity: (number | undefined)[] = Array(seatedCount).fill(undefined)
+  for (const [id, t] of tracks) {
+    const v = views.find(x => x.id === id)
+    let dot: DotState = t.phase
+    if (v?.dot === 'blocked') dot = 'blocked'
+    else if (v?.waitingOn && dot === 'working') dot = 'waiting'
+    dots[t.seat] = dot
+    activity[t.seat] = dot === 'working' ? t.lastActivity : undefined
+  }
+  for (const v of views) {
+    if (v.id) continue
+    dots.push(v.dot)
+    activity.push(undefined)
+  }
+  return { dots, activity, seated: seatedCount }
 }
 
 /**

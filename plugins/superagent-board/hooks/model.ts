@@ -114,6 +114,7 @@ export function buildSnapshot(input: Inputs): Snapshot {
       if (fromFile === 'blocked' || (fromFile === 'waiting' && dot === 'working')) dot = fromFile
     }
     agents.push({
+      id: a.id,
       name: a.teammateId?.split('@')[0] ?? s?.agent ?? a.type,
       ticket: s?.ticket ?? a.description.match(/\b\d{3}\b/)?.[0],
       label: s?.phase && s.phase !== 'unknown' ? s.phase : a.status,

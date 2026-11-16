@@ -1,11 +1,12 @@
 import { expect, test } from 'claude-code/testing'
 
-import { applyEvents, blip, EMPTY_MAP, reconcile } from './map'
+import { applyEvents, blip, EMPTY_MAP, mapDots, reconcile } from './map'
 import type { RawAgent } from './model'
-import type { MapState } from '../types'
+import type { AgentView, MapState } from '../types'
 
 const NOW = Date.parse('2026-11-16T12:00:00Z')
 const agent = (id: string, status: string): RawAgent => ({ id, type: 'worker', status, description: '' })
+const view = (p: Partial<AgentView>): AgentView => ({ name: 'x', label: '', dot: 'working', ...p })
 const seats = (s: MapState) => Object.fromEntries(Object.entries(s.tracks).map(([id, t]) => [id, t.seat]))
 
 test('an agent takes the lowest free seat and keeps it', async () => {
@@ -81,4 +82,13 @@ test('state functions never change their input', async () => {
   reconcile(before, [agent('a', 'completed')], NOW)
   expect(before).toEqual(copy)
   expect(EMPTY_MAP).toEqual({ tracks: {} })
+})
+
+test('map dots: seats in order with holes, status files override, file-only agents after', async () => {
+  let s = applyEvents(EMPTY_MAP, ['a', 'b', 'c'].map(id => ({ kind: 'activity', agentId: id, at: NOW })))
+  s = reconcile(s, [agent('a', 'running'), agent('c', 'running')], NOW + 6_000) // b is gone
+  const views = [view({ id: 'a', dot: 'blocked' }), view({ id: 'c', dot: 'working', waitingOn: 'tester' }), view({ dot: 'done' })]
+  expect(mapDots(s, views)).toEqual({ dots: ['blocked', 'free', 'waiting', 'done'], activity: [undefined, undefined, undefined, undefined], seated: 3 })
+  expect(mapDots(s, []).activity).toEqual([NOW, undefined, NOW])
+  expect(mapDots(EMPTY_MAP, [view({ dot: 'waiting' })])).toEqual({ dots: ['waiting'], activity: [undefined], seated: 0 })
 })

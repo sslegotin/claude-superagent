@@ -19,6 +19,8 @@ export type TicketView = {
 
 /** One running (or recently finished) agent. */
 export type AgentView = {
+  /** The live agent's id from the session's agent list; absent for one known only from a status file. */
+  id?: string
   name: string
   ticket?: string
   label: string

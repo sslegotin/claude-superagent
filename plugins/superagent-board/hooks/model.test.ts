@@ -87,6 +87,7 @@ test('live agents from the session win, matched to status files by ticket or tea
     watchdogState: { mtime: Date.parse(min(3)), keys: ['went-quiet|worker-002|002'] },
   })
   expect(s.agents.map(a => `${a.name}:${a.label}:${a.dot}`)).toEqual(['worker-002:fixing:waiting', 'schema:idle:waiting', 'tester:running:working']) // the watchdog flagged worker-002 as quiet
+  expect(s.agents.map(a => a.id)).toEqual(['a1', 'a2', 'a3'])
   expect(s.watchdog.dot).toBe('working')
   expect(s.problems).toEqual([{ kind: 'went-quiet', who: 'worker-002', ticket: '002' }])
   expect(summary(s)).toBe('▣ 1/5 done · 3 running · ⚠ 1')

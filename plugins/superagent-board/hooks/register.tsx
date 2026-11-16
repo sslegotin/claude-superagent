@@ -10,7 +10,7 @@ const TITLE = 'Super-agent'
 const REFRESH_MS = 2000
 
 // Change the shape tag when Snapshot's fields change: a reload then ignores what the old code stored.
-const snapshot = atom({ plugin: 'superagent-board', key: 'snapshot' } as const, null, { shape: 'snapshot-2' })
+const snapshot = atom({ plugin: 'superagent-board', key: 'snapshot' } as const, null, { shape: 'snapshot-3' })
 const routerBusy = atom({ plugin: 'superagent-board', key: 'routerBusy' } as const, false)
 const frame = atom({ plugin: 'superagent-board', key: 'frame' } as const, 0)
 const FRAME_MS = 500
