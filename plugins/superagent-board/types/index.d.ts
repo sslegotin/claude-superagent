@@ -33,6 +33,26 @@ export type AgentView = {
 
 export type Problem = { kind: string; who: string; ticket?: string }
 
+/** One agent on the agent map, kept from its lifecycle events and the agent list. */
+export type MapTrack = {
+  /** Its worker slot, from 0; fixed while the track lives. */
+  seat: number
+  phase: 'working' | 'waiting' | 'blocked' | 'done'
+  /** Its last model request or tool call. */
+  lastActivity?: number
+  /** The last event or agent-list change that touched it. */
+  lastEvent: number
+  /** When it went done. */
+  endedAt?: number
+  /** The last status the agent list gave, so only changes count. */
+  listStatus?: string
+  /** Its agent type, once the agent list names it. */
+  type?: string
+}
+
+/** The agent map's own state: one track per agent id, plus the router's last activity. */
+export type MapState = { tracks: Record<string, MapTrack>; routerActivity?: number }
+
 export type Snapshot = {
   at: number
   hasBoard: boolean

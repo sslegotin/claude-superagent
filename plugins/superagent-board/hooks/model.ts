@@ -15,7 +15,7 @@ export type Inputs = {
 
 const ACTIVE_PHASES = ['setup', 'building', 'testing', 'reviewing', 'fixing']
 const PROGRESS: Record<string, number> = { setup: 0.1, building: 0.35, testing: 0.6, reviewing: 0.75, fixing: 0.85, checking: 0.95, done: 1 }
-const DONE_FADE_MS = 2 * 60_000
+export const DONE_FADE_MS = 2 * 60_000
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
 const time = (v: unknown, fallback?: number): number | undefined => {
   const t = typeof v === 'string' ? Date.parse(v) : NaN
