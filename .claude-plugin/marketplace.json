@@ -1,0 +1,19 @@
+{
+  "name": "superagent",
+  "owner": { "name": "sslegotin" },
+  "metadata": {
+    "description": "A router/worker setup for Claude Code: one router session hands tickets to workers in their own git worktrees, checks their results and delivers each batch as one PR."
+  },
+  "plugins": [
+    {
+      "name": "superagent",
+      "source": "./plugins/superagent",
+      "description": "Installs and upgrades the router/worker setup in a project with one interactive command, /superagent:setup."
+    },
+    {
+      "name": "superagent-board",
+      "source": "./plugins/superagent-board",
+      "description": "A live pane for the router's session: tickets, running agents, watchdog alerts and a dot map of every agent."
+    }
+  ]
+}

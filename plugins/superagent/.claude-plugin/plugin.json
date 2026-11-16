@@ -1,0 +1,10 @@
+{
+  "name": "superagent",
+  "version": "0.1.0",
+  "description": "Installs and upgrades the router/worker super-agent setup in a project with one interactive command, /superagent:setup.",
+  "author": { "name": "sslegotin" },
+  "homepage": "https://github.com/sslegotin/claude-superagent",
+  "repository": "https://github.com/sslegotin/claude-superagent",
+  "license": "MIT",
+  "keywords": ["agents", "router", "worktrees", "agent-teams", "tickets"]
+}

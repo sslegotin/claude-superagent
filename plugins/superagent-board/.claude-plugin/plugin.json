@@ -1,0 +1,10 @@
+{
+  "name": "superagent-board",
+  "version": "0.1.0",
+  "description": "Live pane for the router/worker super-agent setup: tickets, agents, watchdog alerts and a dot map of every agent",
+  "author": { "name": "sslegotin" },
+  "homepage": "https://github.com/sslegotin/claude-superagent",
+  "repository": "https://github.com/sslegotin/claude-superagent",
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
