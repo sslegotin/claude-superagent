@@ -126,7 +126,9 @@ export function buildSnapshot(input: Inputs): Snapshot {
     if (claimed.has(s)) continue
     const dot = statusDot(s, now, quietMs)
     if (!dot) continue
-    agents.push({ name: s.agent, ticket: s.ticket, label: s.phase, dot, updatedAt: s.updated, note: s.note, quiet: isQuiet(s, now, quietMs), waitingOn: s.waitingOn })
+    // A finished agent's file still speaks for it; its id lets the map draw it in the agent's seat, not twice.
+    const ended = input.agents.find(a => a.type !== 'watchdog' && agentDot(a) === null && matches(a, s))
+    agents.push({ id: ended?.id, name: s.agent, ticket: s.ticket, label: s.phase, dot, updatedAt: s.updated, note: s.note, quiet: isQuiet(s, now, quietMs), waitingOn: s.waitingOn })
   }
 
   // Tickets: the board, joined with the newest status file for each ticket.

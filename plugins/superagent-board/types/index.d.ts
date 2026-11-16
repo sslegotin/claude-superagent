@@ -53,7 +53,12 @@ export type MapTrack = {
 }
 
 /** The agent map's own state: one track per agent id, plus the router's last activity. */
-export type MapState = { tracks: Record<string, MapTrack>; routerActivity?: number }
+export type MapState = {
+  tracks: Record<string, MapTrack>
+  routerActivity?: number
+  /** Agents never drawn as workers (the watchdog's investigator), so their later events can't seat them. */
+  ignored?: Record<string, true>
+}
 
 export type Snapshot = {
   at: number

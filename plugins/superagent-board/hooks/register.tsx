@@ -16,7 +16,7 @@ const snapshot = atom({ plugin: 'superagent-board', key: 'snapshot' } as const, 
 const routerBusy = atom({ plugin: 'superagent-board', key: 'routerBusy' } as const, false)
 const frame = atom({ plugin: 'superagent-board', key: 'frame' } as const, 0)
 const FRAME_MS = 500
-const mapState = atom({ plugin: 'superagent-board', key: 'map' } as const, EMPTY_MAP, { shape: 'map-1' })
+const mapState = atom({ plugin: 'superagent-board', key: 'map' } as const, EMPTY_MAP, { shape: 'map-2' })
 
 // Lifecycle events for the agent map, gathered by the hooks and drained into `mapState` on each animation
 // frame. A hook only notes the event here and passes it on: it never waits, so it can't slow an agent.

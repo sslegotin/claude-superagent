@@ -168,3 +168,12 @@ test('the ticket list shows 10: unfinished first, topped up at the front with th
   // fewer than 10 overall: show them all
   expect(ids(pickTickets([mk(1, 'done'), mk(2, 'building'), mk(3, 'draft')]))).toEqual(['001', '002'])
 })
+
+test('the status file of a finished worker carries the id of its agent, so the map can match it', async () => {
+  const s = buildSnapshot({
+    now: NOW, boardText: BOARD, rules,
+    agents: [{ id: 'a9', type: 'worker', status: 'completed', description: 'Build ticket 002' }],
+    statuses: [{ file: 'a', mtime: NOW, data: { agent: 'worker-002', ticket: '002', phase: 'blocked', blocker: 'stuck' } }],
+  })
+  expect(s.agents.map(a => `${a.id}:${a.name}:${a.dot}`)).toEqual(['a9:worker-002:blocked'])
+})

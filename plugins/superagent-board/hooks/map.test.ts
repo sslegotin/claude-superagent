@@ -92,3 +92,37 @@ test('map dots: seats in order with holes, status files override, file-only agen
   expect(mapDots(s, []).activity).toEqual([NOW, undefined, NOW])
   expect(mapDots(EMPTY_MAP, [view({ dot: 'waiting' })])).toEqual({ dots: ['waiting'], activity: [undefined], seated: 0 })
 })
+
+test('an end that arrives after the list said completed does not undo done', async () => {
+  let s = applyEvents(EMPTY_MAP, [{ kind: 'start', agentId: 'a', at: NOW }])
+  s = reconcile(s, [agent('a', 'running')], NOW + 1)
+  s = reconcile(s, [agent('a', 'completed')], NOW + 2)
+  s = applyEvents(s, [{ kind: 'end', agentId: 'a', reason: 'answer', at: NOW + 1 }, { kind: 'activity', agentId: 'a', at: NOW + 1 }])
+  expect(s.tracks.a?.phase).toBe('done')
+  expect(reconcile(s, [agent('a', 'completed')], NOW + 2 + 2 * 60_000).tracks.a).toBeUndefined()
+})
+
+test('an agent resumed and finished between two polls goes done', async () => {
+  let s = reconcile(EMPTY_MAP, [agent('a', 'running')], NOW)
+  s = reconcile(s, [agent('a', 'completed')], NOW + 1)
+  s = applyEvents(s, [{ kind: 'start', agentId: 'a', at: NOW + 2 }, { kind: 'end', agentId: 'a', reason: 'answer', at: NOW + 3 }])
+  expect(s.tracks.a?.phase).toBe('waiting')
+  expect(reconcile(s, [agent('a', 'completed')], NOW + 4).tracks.a?.phase).toBe('done')
+  const resumed = applyEvents(reconcile(s, [agent('a', 'completed')], NOW + 4), [{ kind: 'start', agentId: 'a', at: NOW + 5 }])
+  expect(reconcile(resumed, [agent('a', 'completed')], NOW + 6).tracks.a?.phase).toBe('working') // the list lags a resume
+})
+
+test('the watchdog investigator stays off the map after the list names it', async () => {
+  let s = reconcile(applyEvents(EMPTY_MAP, [{ kind: 'start', agentId: 'w', at: NOW }]), [{ ...agent('w', 'running'), type: 'watchdog' }], NOW)
+  s = applyEvents(s, [{ kind: 'activity', agentId: 'w', at: NOW + 1 }, { kind: 'start', agentId: 'x', at: NOW + 1 }])
+  expect(seats(s)).toEqual({ x: 0 })
+})
+
+test('a status file overrides a finished agent instead of adding a second dot; quiet turns working yellow', async () => {
+  const done = reconcile(reconcile(EMPTY_MAP, [agent('a', 'running')], NOW), [agent('a', 'completed')], NOW + 1)
+  expect(mapDots(done, [view({ id: 'a', dot: 'blocked' })]).dots).toEqual(['blocked'])
+  expect(mapDots(done, [view({ id: 'a', dot: 'done' })]).dots).toEqual(['done'])
+  expect(mapDots(EMPTY_MAP, [view({ id: 'gone', dot: 'blocked' })]).dots).toEqual(['blocked']) // no track: drawn after the seats
+  const working = reconcile(EMPTY_MAP, [agent('b', 'running')], NOW)
+  expect(mapDots(working, [view({ id: 'b', dot: 'waiting', quiet: true })]).dots).toEqual(['waiting'])
+})

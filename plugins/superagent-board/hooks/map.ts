@@ -39,6 +39,10 @@ export function applyEvents(state: MapState, events: MapEvent[]): MapState {
       continue
     }
     const id = e.agentId as string
+    if (state.ignored?.[id]) continue
+    // A done agent's late end or activity (drained after the list said completed) doesn't undo done;
+    // only a new turn (a resume) does.
+    if (e.kind !== 'start' && tracks[id]?.phase === 'done') continue
     if (e.kind === 'end') {
       const t = tracks[id]
       if (!t) continue
@@ -58,12 +62,19 @@ const LIST_PHASE: Record<string, MapTrack['phase'] | undefined> = {
 
 export function reconcile(state: MapState, list: RawAgent[], now: number): MapState {
   const tracks = { ...state.tracks }
+  const ignored: Record<string, true> = {}
   const listed = new Set<string>()
   for (const a of list) {
     listed.add(a.id)
+    if (a.type === 'watchdog') ignored[a.id] = true
     if (a.type === 'watchdog' || a.status === 'killed') { delete tracks[a.id]; continue }
     const t = tracks[a.id]
-    if (t && t.listStatus === a.status) continue // only the list's changes count; events in between stand
+    if (t && t.listStatus === a.status) {
+      // Only the list's changes count, so events in between stand; but an agent that resumed and finished
+      // between two polls ends its turn waiting while the list still says completed: that is done.
+      if (a.status === 'completed' && t.phase === 'waiting') tracks[a.id] = { ...t, phase: 'done', endedAt: now, lastEvent: now }
+      continue
+    }
     if (!t && a.status === 'completed') continue // finished before the board saw it
     const phase = LIST_PHASE[a.status]
     const base = seated(tracks, a.id, now)
@@ -79,13 +90,13 @@ export function reconcile(state: MapState, list: RawAgent[], now: number): MapSt
     const faded = t.phase === 'done' && t.endedAt !== undefined && now - t.endedAt >= DONE_FADE_MS
     if (missing || faded) delete tracks[id]
   }
-  return { ...state, tracks }
+  return { ...state, tracks, ignored }
 }
 
 /**
- * The map's worker dots: one per seat in seat order (an empty seat is 'free'), then the agents known only
- * from a status file. An agent's own status file overrides its events: blocked is red, waiting on
- * something is yellow. `activity` is the agent's last activity while its dot is working; `seated` is how
+ * The map's worker dots: one per seat in seat order (an empty seat is 'free'), then the agents without a
+ * seat (known only from a status file, or ended before the map saw them). An agent's own status file
+ * overrides its events: blocked is red, waiting on something or flagged quiet is yellow. `activity` is the agent's last activity while its dot is working; `seated` is how
  * many entries are seats.
  */
 export function mapDots(state: MapState, views: AgentView[]): { dots: DotState[]; activity: (number | undefined)[]; seated: number } {
@@ -97,12 +108,12 @@ export function mapDots(state: MapState, views: AgentView[]): { dots: DotState[]
     const v = views.find(x => x.id === id)
     let dot: DotState = t.phase
     if (v?.dot === 'blocked') dot = 'blocked'
-    else if (v?.waitingOn && dot === 'working') dot = 'waiting'
+    else if ((v?.waitingOn || v?.quiet) && dot === 'working') dot = 'waiting'
     dots[t.seat] = dot
     activity[t.seat] = dot === 'working' ? t.lastActivity : undefined
   }
   for (const v of views) {
-    if (v.id) continue
+    if (v.id && state.tracks[v.id]) continue // drawn in its seat
     dots.push(v.dot)
     activity.push(undefined)
   }
